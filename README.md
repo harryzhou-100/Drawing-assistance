@@ -38,3 +38,4 @@ npm run build
 ## Status
 
 Workflow interviews with independent animators/illustrators are mapping pain points across storyboarding, keyframing, and coloring. Next interactive slice under consideration: voice/prompt coloring on a cleaned frame.
+Triggered Pages redeploy 2026-11-22T19:42:10Z
