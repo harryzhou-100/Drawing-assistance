@@ -1,0 +1,67 @@
+:root {
+  --ink: #141618;
+  --ink-soft: #2c3136;
+  --muted: #5a636c;
+  --paper: #e8ecf0;
+  --paper-deep: #d5dde4;
+  --accent: #2a6b5f;
+  --accent-deep: #1f5349;
+  --rule: rgba(20, 22, 24, 0.12);
+  --rule-strong: rgba(20, 22, 24, 0.22);
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --paper-texture:
+    radial-gradient(ellipse at 20% 10%, rgba(255, 255, 255, 0.45), transparent 45%),
+    radial-gradient(ellipse at 90% 80%, rgba(42, 107, 95, 0.07), transparent 40%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(20, 22, 24, 0.015) 2px,
+      rgba(20, 22, 24, 0.015) 3px
+    );
+
+  font-family: var(--font-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image: var(--paper-texture);
+  line-height: 1.5;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: transparent;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+img,
+svg,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
