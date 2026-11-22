@@ -20,7 +20,10 @@ Interactive site + a **client-side line cleanup** mini-demo:
 
 No cloud inference yet — the demo teaches the interaction loop.
 
-## Develop
+## Try it
+
+- **GitHub Pages** (after this workflow is on `main`): https://harryzhou-100.github.io/Drawing-assistance/
+- Locally:
 
 ```bash
 npm install
@@ -30,6 +33,7 @@ npm run dev
 ```bash
 npm run build
 ```
+
 
 ## Status
 
