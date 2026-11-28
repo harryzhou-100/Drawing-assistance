@@ -10,7 +10,7 @@ Rather than prompt → finished shot, Draftline embeds assistive models into eac
 | --- | --- | --- |
 | **1. Rough / scratch** | Acting, composition, timing | Volume ghosts, consistency checks |
 | **2. Layout / blocking** | Camera, staging | Perspective / contact snap to set |
-| **3. Cleanup / douga** | Line style, final silhouettes | Propose cleaned strokes as a layer |
+| **3. Cleanup / douga** | Line style, keys, final silhouettes | Cleanup layers + key-to-key inbetween drafts |
 | **4. Color / finish** | Palette, mood, lighting | Flats, palette lock, draft shadows |
 
 ### Assist loop (every tool)
@@ -21,21 +21,19 @@ Rather than prompt → finished shot, Draftline embeds assistive models into eac
 4. Accept / reject / redraw  
 5. Export stage asset  
 
-## This repo (P0 + P1 demo)
-
-Interactive site with a chained assist board:
+## This repo (P0–P2 demos)
 
 1. **Cleanup** — draw a rough (or load a sample), propose cleanup, accept/reject  
-2. **Flats** — propose enclosed-region flats from a **locked palette**; click a region + swatch to reassign within the lock  
-3. **Palette lock** — accepting flats propagates the same swatch mapping onto a Frame 2 preview  
+2. **Flats** — propose enclosed-region flats from a **locked palette**; reassign only within the lock; Frame 2 inherits on accept  
+3. **Inbetweens** — load Key A / Key B, propose draft volumes between them, scrub timing, ghost keys, accept/reject  
 
-No cloud inference yet — local geometry + flood-fill stand in for model-backed assists so the interaction loop is real.
+No cloud inference yet — local geometry / flood-fill / stroke interpolation stand in for model-backed assists so the interaction loop is real.
 
 ## Roadmap
 
 - **P0** Cleanup assist with propose / ghost / accept  
-- **P1** Auto-flat + palette lock on cleaned frames *(this demo)*  
-- **P2** Key-to-key inbetween drafts  
+- **P1** Auto-flat + palette lock on cleaned frames  
+- **P2** Key-to-key inbetween drafts *(this demo)*  
 - **P3** Layout / 3D snap assist  
 
 ## Try it
@@ -54,4 +52,4 @@ npm run build
 
 ## Status
 
-P0 + P1 ship the stage-wise framing, cleanup assist loop, and flat / palette-lock assist. Next interactive slice: key-to-key inbetween drafts.
+P0–P2 ship cleanup, flats/palette-lock, and key-to-key inbetween assist loops. Next interactive slice: layout / 3D snap.
