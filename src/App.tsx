@@ -27,8 +27,8 @@ const stages = [
   {
     name: 'Color / finish',
     detail:
-      'After cleanup: auto-flat, palette lock across frames, draft shadows from lighting refs — every fill remains editable.',
-    state: 'Next slice',
+      'Auto-flat enclosed regions from a locked character palette. Reassign only within the lock; accept to propagate colors to the next frame.',
+    state: 'Live in this demo',
     owns: 'Assist loop',
   },
 ]
@@ -51,7 +51,7 @@ export default function App() {
         <nav className="nav__links" aria-label="Primary">
           <a href="#pipeline">Pipeline</a>
           <a href="#loop">Assist loop</a>
-          <a href="#demo">Try cleanup</a>
+          <a href="#demo">Try assist</a>
         </nav>
       </header>
 
@@ -67,7 +67,7 @@ export default function App() {
             </p>
             <div className="hero__cta">
               <a className="btn btn--primary btn--lg" href="#demo">
-                Try the assist loop
+                Try cleanup → flats
               </a>
               <a className="btn btn--lg" href="#pipeline">
                 See the stages
@@ -132,10 +132,10 @@ export default function App() {
 
         <section id="demo" className="section section--demo" aria-labelledby="demo-title">
           <div className="section__inner">
-            <h2 id="demo-title">Step 1 demo: rough → proposed cleanup</h2>
+            <h2 id="demo-title">Live demo: cleanup → flats → palette lock</h2>
             <p className="section__lede">
-              Draw freely. Propose a cleanup layer. Ghost-compare, then Accept or Reject.
-              Your rough never disappears until you say so.
+              Propose cleanup, accept it, then propose flats from a locked palette. Reassign
+              only within the lock; accept to push colors onto the next frame.
             </p>
             <LineCleanupDemo />
           </div>
@@ -147,11 +147,11 @@ export default function App() {
             <ol className="roadmap">
               <li>
                 <strong>P0 — Cleanup assist</strong>
-                <span>Propose / ghost / accept loop (this demo)</span>
+                <span>Propose / ghost / accept loop</span>
               </li>
               <li>
                 <strong>P1 — Auto-flat + palette lock</strong>
-                <span>Named regions on cleaned frames; color continuity across frames</span>
+                <span>Named regions + locked swatches across frames (this demo)</span>
               </li>
               <li>
                 <strong>P2 — Key-to-key inbetween drafts</strong>
