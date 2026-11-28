@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { cleanupStrokes, type Point, type Stroke } from '../lib/strokeCleanup'
 
-type Mode = 'rough' | 'clean'
+type Phase = 'draw' | 'review' | 'accepted'
 
 function drawStrokes(
   ctx: CanvasRenderingContext2D,
@@ -29,8 +29,8 @@ function drawStrokes(
 function paintBoard(
   canvas: HTMLCanvasElement,
   rough: Stroke[],
-  clean: Stroke[] | null,
-  mode: Mode,
+  proposed: Stroke[] | null,
+  phase: Phase,
   ghostRough: boolean,
 ) {
   const ctx = canvas.getContext('2d')
@@ -53,45 +53,62 @@ function paintBoard(
   ctx.fillStyle = wash
   ctx.fillRect(0, 0, w, h)
 
-  if (mode === 'rough' || (mode === 'clean' && ghostRough)) {
+  const showRough =
+    phase === 'draw' || ((phase === 'review' || phase === 'accepted') && ghostRough)
+  const showProposed = (phase === 'review' || phase === 'accepted') && proposed
+
+  if (showRough) {
     drawStrokes(ctx, rough, {
       color: '#6B6358',
-      width: mode === 'rough' ? 2.8 : 1.5,
-      alpha: mode === 'rough' ? 0.9 : 0.28,
+      width: phase === 'draw' ? 2.8 : 1.5,
+      alpha: phase === 'draw' ? 0.9 : 0.28,
     })
   }
-  if (mode === 'clean' && clean) {
-    drawStrokes(ctx, clean, { color: '#0E1012', width: 2.35, alpha: 1 })
+  if (showProposed) {
+    drawStrokes(ctx, proposed, {
+      color: phase === 'accepted' ? '#0E1012' : '#1A3D38',
+      width: phase === 'accepted' ? 2.35 : 2.2,
+      alpha: 1,
+    })
   }
 }
+
+const LOOP_STEPS: { id: Phase | 'propose'; label: string }[] = [
+  { id: 'draw', label: '1. Draw rough' },
+  { id: 'propose', label: '2. Propose layer' },
+  { id: 'review', label: '3. Compare' },
+  { id: 'accepted', label: '4. Accept / reject' },
+]
 
 export function LineCleanupDemo() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drawingRef = useRef(false)
   const currentIdRef = useRef<string | null>(null)
-  const labelId = useId()
+  const ghostId = useId()
 
   const [rough, setRough] = useState<Stroke[]>([])
-  const [clean, setClean] = useState<Stroke[] | null>(null)
-  const [mode, setMode] = useState<Mode>('rough')
+  const [proposed, setProposed] = useState<Stroke[] | null>(null)
+  const [phase, setPhase] = useState<Phase>('draw')
   const [ghostRough, setGhostRough] = useState(true)
-  const [status, setStatus] = useState('Draw a rough sketch, then run cleanup.')
+  const [status, setStatus] = useState(
+    'Draw your rough first. AI will only propose a cleanup layer — you decide.',
+  )
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    paintBoard(canvas, rough, clean, mode, ghostRough)
-  }, [rough, clean, mode, ghostRough])
+    paintBoard(canvas, rough, proposed, phase, ghostRough)
+  }, [rough, proposed, phase, ghostRough])
 
   useEffect(() => {
     const onResize = () => {
       const canvas = canvasRef.current
       if (!canvas) return
-      paintBoard(canvas, rough, clean, mode, ghostRough)
+      paintBoard(canvas, rough, proposed, phase, ghostRough)
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [rough, clean, mode, ghostRough])
+  }, [rough, proposed, phase, ghostRough])
 
   function pointerPos(e: React.PointerEvent<HTMLCanvasElement>): Point {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -99,11 +116,7 @@ export function LineCleanupDemo() {
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (mode !== 'rough') {
-      setMode('rough')
-      setClean(null)
-      setStatus('Back to rough — keep drawing, then clean up again.')
-    }
+    if (phase !== 'draw') return
     e.currentTarget.setPointerCapture(e.pointerId)
     drawingRef.current = true
     const id = crypto.randomUUID()
@@ -113,7 +126,7 @@ export function LineCleanupDemo() {
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!drawingRef.current || !currentIdRef.current) return
+    if (phase !== 'draw' || !drawingRef.current || !currentIdRef.current) return
     const p = pointerPos(e)
     const id = currentIdRef.current
     setRough((prev) =>
@@ -126,77 +139,164 @@ export function LineCleanupDemo() {
     currentIdRef.current = null
   }
 
-  function runCleanup() {
+  function proposeCleanup() {
     if (rough.length === 0) {
-      setStatus('Sketch a few strokes first.')
+      setStatus('Sketch a few strokes first — the assist needs your rough.')
       return
     }
     const next = cleanupStrokes(rough)
-    setClean(next)
-    setMode('clean')
+    setProposed(next)
+    setPhase('review')
     setStatus(
-      'Cleanup applied (local smoothing + path simplification). You still own every pixel — undo, redraw, or tweak.',
+      'Cleanup proposed as a separate layer. Ghost your rough, then Accept or Reject.',
     )
   }
 
+  function acceptProposal() {
+    if (!proposed) return
+    setPhase('accepted')
+    setStatus(
+      'Layer accepted. This is stage output — not a finished film. Keep editing or clear for another pass.',
+    )
+  }
+
+  function rejectProposal() {
+    setProposed(null)
+    setPhase('draw')
+    setStatus('Proposal rejected. Your rough is unchanged — redraw or propose again.')
+  }
+
+  function backToDraw() {
+    setProposed(null)
+    setPhase('draw')
+    setStatus('Back to rough. Draw more, then propose cleanup again.')
+  }
+
   function undoStroke() {
+    if (phase !== 'draw') return
     setRough((prev) => prev.slice(0, -1))
-    setClean(null)
-    setMode('rough')
     setStatus('Last stroke removed.')
   }
 
   function clearAll() {
     setRough([])
-    setClean(null)
-    setMode('rough')
-    setStatus('Board cleared. Draw something new.')
+    setProposed(null)
+    setPhase('draw')
+    setStatus('Board cleared. Draw a new rough.')
+  }
+
+  function loopStepActive(stepId: (typeof LOOP_STEPS)[number]['id']): boolean {
+    if (stepId === 'draw') return phase === 'draw' && rough.length === 0
+    if (stepId === 'propose') return phase === 'draw' && rough.length > 0
+    if (stepId === 'review') return phase === 'review'
+    return phase === 'accepted'
+  }
+
+  function loopStepDone(stepId: (typeof LOOP_STEPS)[number]['id']): boolean {
+    if (stepId === 'draw') return rough.length > 0
+    if (stepId === 'propose') return phase === 'review' || phase === 'accepted'
+    if (stepId === 'review') return phase === 'accepted'
+    return phase === 'accepted'
   }
 
   return (
     <div className="demo">
-      <div className="demo__toolbar" role="toolbar" aria-label="Line cleanup controls">
-        <button type="button" className="btn btn--primary" onClick={runCleanup}>
-          Clean up lines
-        </button>
-        <button
-          type="button"
-          className={`btn ${mode === 'rough' ? 'btn--active' : ''}`}
-          onClick={() => setMode('rough')}
-          disabled={rough.length === 0}
-        >
-          Rough
-        </button>
-        <button
-          type="button"
-          className={`btn ${mode === 'clean' ? 'btn--active' : ''}`}
-          onClick={() => clean && setMode('clean')}
-          disabled={!clean}
-        >
-          Clean
-        </button>
-        <label className="demo__ghost" htmlFor={labelId}>
-          <input
-            id={labelId}
-            type="checkbox"
-            checked={ghostRough}
-            onChange={(e) => setGhostRough(e.target.checked)}
-          />
-          Ghost rough under clean
-        </label>
+      <ol className="demo__loop" aria-label="Assist loop steps">
+        {LOOP_STEPS.map((step) => {
+          const active = loopStepActive(step.id)
+          const done = loopStepDone(step.id)
+          return (
+            <li
+              key={step.id}
+              className={
+                active
+                  ? 'demo__loop-step demo__loop-step--active'
+                  : done
+                    ? 'demo__loop-step demo__loop-step--done'
+                    : 'demo__loop-step'
+              }
+            >
+              {step.label}
+            </li>
+          )
+        })}
+      </ol>
+
+      <div className="demo__toolbar" role="toolbar" aria-label="Line cleanup assist controls">
+        {phase === 'draw' && (
+          <>
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={proposeCleanup}
+              disabled={rough.length === 0}
+            >
+              Propose cleanup
+            </button>
+            <button type="button" className="btn" onClick={undoStroke} disabled={rough.length === 0}>
+              Undo stroke
+            </button>
+          </>
+        )}
+
+        {phase === 'review' && (
+          <>
+            <button type="button" className="btn btn--primary" onClick={acceptProposal}>
+              Accept layer
+            </button>
+            <button type="button" className="btn" onClick={rejectProposal}>
+              Reject
+            </button>
+            <label className="demo__ghost" htmlFor={ghostId}>
+              <input
+                id={ghostId}
+                type="checkbox"
+                checked={ghostRough}
+                onChange={(e) => setGhostRough(e.target.checked)}
+              />
+              Ghost rough
+            </label>
+          </>
+        )}
+
+        {phase === 'accepted' && (
+          <>
+            <button type="button" className="btn btn--primary" onClick={backToDraw}>
+              Edit rough again
+            </button>
+            <label className="demo__ghost" htmlFor={ghostId}>
+              <input
+                id={ghostId}
+                type="checkbox"
+                checked={ghostRough}
+                onChange={(e) => setGhostRough(e.target.checked)}
+              />
+              Ghost rough
+            </label>
+          </>
+        )}
+
         <div className="demo__spacer" />
-        <button type="button" className="btn" onClick={undoStroke} disabled={rough.length === 0}>
-          Undo
-        </button>
-        <button type="button" className="btn" onClick={clearAll} disabled={rough.length === 0}>
+        <button
+          type="button"
+          className="btn"
+          onClick={clearAll}
+          disabled={rough.length === 0 && !proposed}
+        >
           Clear
         </button>
       </div>
 
       <canvas
         ref={canvasRef}
-        className="demo__canvas"
-        aria-label="Drawing board for rough sketch cleanup"
+        className={`demo__canvas${phase === 'draw' ? '' : ' demo__canvas--locked'}`}
+        aria-label={
+          phase === 'draw'
+            ? 'Drawing board — draw your rough sketch'
+            : phase === 'review'
+              ? 'Review board — compare proposed cleanup to rough'
+              : 'Accepted cleanup layer'
+        }
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -207,8 +307,8 @@ export function LineCleanupDemo() {
         {status}
       </p>
       <p className="demo__note">
-        Demo only — no cloud model yet. This stands in for structure-preserving cleanup
-        (ControlNet / adapters) so you can feel the human-in-the-loop step.
+        Local geometry stand-in for model-backed cleanup. The product point is the loop:
+        your rough stays sacred until you accept a proposed layer.
       </p>
     </div>
   )

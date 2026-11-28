@@ -1,28 +1,47 @@
 # Draftline
 
-Human-in-the-loop AI assistance for traditional illustrators and 2D animators.
+Stage-wise AI co-pilot for traditional 2D animation — **speed the pipeline, don’t skip it**.
 
-Rather than end-to-end image generation, Draftline embeds controllable models into granular stages of the production pipeline so artists keep pixel-level authority.
+Rather than prompt → finished shot, Draftline embeds assistive models into each existing production stage so artists keep judgment and pixel-level authority.
 
-## Pipeline (product vision)
+## Product spine
 
-1. **Line cleanup** — Structure-preserving image-to-image models (ControlNet / custom adapters) convert rough pencil into clean, vector-ready line art without flattening personal stroke style.
-2. **Voice coloring** — Multimodal prompt and voice commands apply flats, lighting references, and shading masks with strict palette consistency.
-3. **Editable layers** — Every AI step lands as an intermediate layer the artist can reject, refine, or redraw.
+| Stage | Human owns | AI assists |
+| --- | --- | --- |
+| **1. Rough / scratch** | Acting, composition, timing | Volume ghosts, consistency checks |
+| **2. Layout / blocking** | Camera, staging | Perspective / contact snap to set |
+| **3. Cleanup / douga** | Line style, final silhouettes | Propose cleaned strokes as a layer |
+| **4. Color / finish** | Palette, mood, lighting | Flats, palette lock, draft shadows |
 
-## This repo (demo)
+### Assist loop (every tool)
 
-Interactive site + a **client-side line cleanup** mini-demo:
+1. Artist draws / picks keys  
+2. AI proposes next layer  
+3. Ghost + compare  
+4. Accept / reject / redraw  
+5. Export stage asset  
 
-- Draw rough strokes on a canvas
-- Run local smoothing + path simplification (stand-in for the real model)
-- Toggle rough / clean, ghost the original, undo, clear
+## This repo (P0 demo)
 
-No cloud inference yet — the demo teaches the interaction loop.
+Interactive site + **client-side cleanup assist**:
+
+- Draw a rough on the canvas  
+- **Propose cleanup** as a separate layer (local smoothing + path simplification stand-in)  
+- Ghost-compare, then **Accept** or **Reject**  
+- Rough never disappears until you accept  
+
+No cloud inference yet — the demo teaches the human-in-the-loop interaction.
+
+## Roadmap
+
+- **P0** Cleanup assist with propose / ghost / accept *(this demo)*  
+- **P1** Auto-flat + palette lock on cleaned frames  
+- **P2** Key-to-key inbetween drafts  
+- **P3** Layout / 3D snap assist  
 
 ## Try it
 
-- **GitHub Pages** (after this workflow is on `main`): https://harryzhou-100.github.io/Drawing-assistance/
+- **GitHub Pages** (after deploy on `main`): https://harryzhou-100.github.io/Drawing-assistance/
 - Locally:
 
 ```bash
@@ -34,8 +53,6 @@ npm run dev
 npm run build
 ```
 
-
 ## Status
 
-Workflow interviews with independent animators/illustrators are mapping pain points across storyboarding, keyframing, and coloring. Next interactive slice under consideration: voice/prompt coloring on a cleaned frame.
-Triggered Pages redeploy 2026-11-22T19:42:10Z
+P0 ships the stage-wise product framing and the cleanup assist loop. Next interactive slice: flatting / palette lock on an accepted cleanup layer.
