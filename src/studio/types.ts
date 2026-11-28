@@ -1,3 +1,4 @@
+import type { PaintProposal } from '../lib/promptPaint'
 import type { Stroke } from '../lib/strokeCleanup'
 
 export type StudioFrame = {
@@ -6,9 +7,13 @@ export type StudioFrame = {
   strokes: Stroke[]
   /** Optional accepted cleanup layer. */
   cleaned: Stroke[] | null
+  /** Accepted paint layers (voice/prompt cel fills). */
+  paints: PaintProposal[]
   /** Artist-marked keyframe for inbetween assist. */
   isKey: boolean
 }
+
+export type StudioTool = 'draw' | 'paint'
 
 export type StudioProject = {
   name: string

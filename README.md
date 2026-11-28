@@ -15,11 +15,11 @@ Then go to `http://localhost:5173/#/studio` (or GitHub Pages `/Drawing-assistanc
 
 ### Studio workflow
 
-1. Draw frame 1 with a pen / stylus / mouse  
-2. **Mark as key** → **+ Frame** → draw frame 2 → mark key  
-3. **Insert inbetweens** between the two keys  
-4. Optional: **Propose cleanup** on a frame → Accept / Reject  
-5. **Play** the loop · **Export PNGs**
+1. **Draw** closed line art (e.g. hair silhouette) with pen / stylus / mouse  
+2. Switch to **Paint (prompt)** — type or **Voice prompt** (“paint this hair green with vivid highlights”)  
+3. **Click inside** the closed region → vivid cel paint (base + highlight + shadow) is proposed  
+4. **Accept paint** / **Reject** / **Undo** anytime  
+5. Optional: mark keys → **Insert inbetweens**, cleanup, **Play**, **Export PNGs**
 
 ## Why not a CSP / Procreate Dreams plugin?
 

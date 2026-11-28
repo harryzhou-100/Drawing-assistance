@@ -107,6 +107,20 @@
   min-height: 2.5rem;
 }
 
+.studio__prompt {
+  width: 100%;
+  resize: vertical;
+  min-height: 4.2rem;
+  border: 1px solid var(--rule-strong);
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  padding: 0.45rem 0.5rem;
+  border-radius: 2px;
+}
+
 .studio__check {
   display: flex;
   align-items: center;
@@ -144,6 +158,10 @@
 
 .studio__canvas--locked {
   cursor: default;
+}
+
+.studio__canvas--paint {
+  cursor: cell;
 }
 
 .studio__status {
