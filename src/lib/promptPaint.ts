@@ -21,10 +21,11 @@ const COLOR_TABLE: { keys: string[]; palette: CelPalette }[] = [
   {
     keys: ['green', 'teal', 'sage', 'mint', 'forest', 'emerald', 'jade'],
     palette: {
+      // Tuned toward anime cel hair: dusty mid green, yellow-green sheen, cool shadow
       name: 'vivid green',
-      base: [110, 140, 105],
-      highlight: [190, 210, 120],
-      shadow: [55, 85, 95],
+      base: [95, 145, 100],
+      highlight: [210, 225, 125],
+      shadow: [45, 75, 100],
     },
   },
   {
@@ -257,23 +258,25 @@ export function proposeRegionPaint(
         (region.mask[idx + width] !== 1 ? 1 : 0)
 
       // Soft highlight lobes (sheen patches like anime hair)
-      const sheenA = Math.exp(-(((nx - 0.35) * 3.2) ** 2 + ((ny - 0.18) * 4.5) ** 2))
-      const sheenB = Math.exp(-(((nx - 0.7) * 4) ** 2 + ((ny - 0.28) * 5) ** 2))
-      const sheen = Math.max(sheenA, sheenB * 0.85)
+      const sheenA = Math.exp(-(((nx - 0.32) * 2.8) ** 2 + ((ny - 0.16) * 3.8) ** 2))
+      const sheenB = Math.exp(-(((nx - 0.68) * 3.4) ** 2 + ((ny - 0.26) * 4.2) ** 2))
+      const sheen = Math.max(sheenA, sheenB * 0.9)
 
       let r = palette.base[0]
       let g = palette.base[1]
       let b = palette.base[2]
 
-      if (ny > 0.55 || edge >= 2) {
-        const t = Math.min(1, (ny - 0.45) * 1.4 + edge * 0.12)
+      // Soft shadow falloff (avoid a hard horizontal band)
+      const shadowAmt = Math.max(0, (ny - 0.42) / 0.58) * 0.85 + edge * 0.08
+      if (shadowAmt > 0) {
+        const t = Math.min(1, shadowAmt)
         r = Math.round(r + (palette.shadow[0] - r) * t)
         g = Math.round(g + (palette.shadow[1] - g) * t)
         b = Math.round(b + (palette.shadow[2] - b) * t)
       }
 
-      if (sheen > 0.35 && ny < 0.5) {
-        const t = Math.min(1, (sheen - 0.35) * 2.2)
+      if (sheen > 0.28 && ny < 0.55) {
+        const t = Math.min(1, (sheen - 0.28) * 2.6)
         r = Math.round(r + (palette.highlight[0] - r) * t)
         g = Math.round(g + (palette.highlight[1] - g) * t)
         b = Math.round(b + (palette.highlight[2] - b) * t)

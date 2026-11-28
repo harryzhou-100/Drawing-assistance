@@ -576,7 +576,12 @@ export function StudioApp() {
           ) : null}
 
           <p className="studio__rail-label">Edit</p>
-          <button type="button" className="btn studio__tool" onClick={undo}>
+          <button
+            type="button"
+            className="btn studio__tool"
+            onClick={undo}
+            disabled={undoStack.length === 0 && !proposedPaint && !proposedCleanup}
+          >
             Undo
           </button>
           <button type="button" className="btn studio__tool" onClick={clearFrame}>
