@@ -1,15 +1,33 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { proposeInbetweens } from '../lib/inbetween'
+import {
+  clonePaintProposal,
+  paletteFromPrompt,
+  proposeRegionPaint,
+  type PaintProposal,
+} from '../lib/promptPaint'
 import { cleanupStrokes, type Point, type Stroke } from '../lib/strokeCleanup'
 import { frameDisplayStrokes, frameToPngBlob, paintStudioBoard } from './draw'
-import type { StudioFrame } from './types'
+import type { StudioFrame, StudioTool } from './types'
 import './studio.css'
+
+type SpeechRec = {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  start: () => void
+  stop: () => void
+  onresult: ((ev: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null
+  onerror: ((ev: { error: string }) => void) | null
+  onend: (() => void) | null
+}
 
 function newFrame(partial?: Partial<StudioFrame>): StudioFrame {
   return {
     id: crypto.randomUUID(),
     strokes: [],
     cleaned: null,
+    paints: [],
     isKey: false,
     ...partial,
   }
@@ -22,27 +40,74 @@ function cloneStrokes(strokes: Stroke[]): Stroke[] {
   }))
 }
 
+function cloneFrame(frame: StudioFrame): StudioFrame {
+  return {
+    id: frame.id,
+    strokes: cloneStrokes(frame.strokes),
+    cleaned: frame.cleaned ? cloneStrokes(frame.cleaned) : null,
+    paints: frame.paints.map(clonePaintProposal),
+    isKey: frame.isKey,
+  }
+}
+
 export function StudioApp() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drawingRef = useRef(false)
   const strokeIdRef = useRef<string | null>(null)
   const playTimerRef = useRef<number | null>(null)
+  const recognitionRef = useRef<SpeechRec | null>(null)
   const onionId = useId()
   const ghostId = useId()
+  const promptId = useId()
 
   const [frames, setFrames] = useState<StudioFrame[]>(() => [newFrame({ isKey: true })])
   const [activeIndex, setActiveIndex] = useState(0)
+  const [tool, setTool] = useState<StudioTool>('draw')
   const [onionSkin, setOnionSkin] = useState(true)
   const [showCleaned, setShowCleaned] = useState(true)
   const [proposedCleanup, setProposedCleanup] = useState<Stroke[] | null>(null)
+  const [proposedPaint, setProposedPaint] = useState<PaintProposal | null>(null)
   const [ghostRough, setGhostRough] = useState(true)
   const [playing, setPlaying] = useState(false)
+  const [listening, setListening] = useState(false)
   const [fps, setFps] = useState(8)
+  const [prompt, setPrompt] = useState(
+    'paint this hair green with vivid highlights and soft shadows',
+  )
+  const [undoStack, setUndoStack] = useState<StudioFrame[][]>([])
   const [status, setStatus] = useState(
-    'Draw on the tablet. Mark keys, propose cleanup, or insert inbetweens between two keys.',
+    'Draw closed line art, switch to Paint, click inside a region, speak or type a prompt, then Propose paint.',
   )
 
   const active = frames[activeIndex] ?? frames[0]
+
+  function pushUndo() {
+    setUndoStack((prev) => [...prev.slice(-29), frames.map(cloneFrame)])
+  }
+
+  function undo() {
+    if (proposedPaint) {
+      setProposedPaint(null)
+      setStatus('Paint proposal discarded.')
+      return
+    }
+    if (proposedCleanup) {
+      setProposedCleanup(null)
+      setStatus('Cleanup proposal discarded.')
+      return
+    }
+    setUndoStack((prev) => {
+      if (prev.length === 0) {
+        setStatus('Nothing to undo.')
+        return prev
+      }
+      const next = [...prev]
+      const snapshot = next.pop()!
+      setFrames(snapshot)
+      setStatus('Undid last change.')
+      return next
+    })
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -52,13 +117,24 @@ export function StudioApp() {
     paintStudioBoard(canvas, {
       strokes: active.strokes,
       cleaned: active.cleaned,
+      paints: active.paints,
       onionPrev: onionSkin && prev ? frameDisplayStrokes(prev.strokes, prev.cleaned) : null,
       onionNext: onionSkin && next ? frameDisplayStrokes(next.strokes, next.cleaned) : null,
       proposedCleanup,
+      proposedPaint,
       ghostRough,
       showCleaned,
     })
-  }, [frames, activeIndex, active, onionSkin, proposedCleanup, ghostRough, showCleaned])
+  }, [
+    frames,
+    activeIndex,
+    active,
+    onionSkin,
+    proposedCleanup,
+    proposedPaint,
+    ghostRough,
+    showCleaned,
+  ])
 
   useEffect(() => {
     const onResize = () => {
@@ -69,16 +145,27 @@ export function StudioApp() {
       paintStudioBoard(canvas, {
         strokes: active.strokes,
         cleaned: active.cleaned,
+        paints: active.paints,
         onionPrev: onionSkin && prev ? frameDisplayStrokes(prev.strokes, prev.cleaned) : null,
         onionNext: onionSkin && next ? frameDisplayStrokes(next.strokes, next.cleaned) : null,
         proposedCleanup,
+        proposedPaint,
         ghostRough,
         showCleaned,
       })
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [frames, activeIndex, active, onionSkin, proposedCleanup, ghostRough, showCleaned])
+  }, [
+    frames,
+    activeIndex,
+    active,
+    onionSkin,
+    proposedCleanup,
+    proposedPaint,
+    ghostRough,
+    showCleaned,
+  ])
 
   useEffect(() => {
     if (!playing) {
@@ -89,11 +176,18 @@ export function StudioApp() {
     playTimerRef.current = window.setInterval(() => {
       setActiveIndex((i) => (i + 1) % Math.max(1, frames.length))
       setProposedCleanup(null)
+      setProposedPaint(null)
     }, Math.max(40, 1000 / fps))
     return () => {
       if (playTimerRef.current) window.clearInterval(playTimerRef.current)
     }
   }, [playing, fps, frames.length])
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop()
+    }
+  }, [])
 
   function updateActive(mutator: (frame: StudioFrame) => StudioFrame) {
     setFrames((prev) => prev.map((f, i) => (i === activeIndex ? mutator(f) : f)))
@@ -106,11 +200,39 @@ export function StudioApp() {
 
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
     if (playing || proposedCleanup) return
+
+    if (tool === 'paint') {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const p = pointerPos(e)
+      const w = canvas.clientWidth
+      const h = canvas.clientHeight
+      const lines = frameDisplayStrokes(active.strokes, active.cleaned)
+      if (lines.length === 0) {
+        setStatus('Draw closed line art first, then click inside the region to paint.')
+        return
+      }
+      const proposal = proposeRegionPaint(lines, w, h, p, prompt)
+      if (!proposal) {
+        setStatus(
+          'Could not fill that click — close the shape (hair outline), click inside it, and try again.',
+        )
+        return
+      }
+      const pal = paletteFromPrompt(prompt)
+      setProposedPaint(proposal)
+      setStatus(
+        `Paint proposed (${pal.name}, ${proposal.pixelCount} px). Accept, Reject, or Undo. Prompt: “${prompt}”`,
+      )
+      return
+    }
+
     e.currentTarget.setPointerCapture(e.pointerId)
     drawingRef.current = true
     const id = crypto.randomUUID()
     strokeIdRef.current = id
     const p = pointerPos(e)
+    pushUndo()
     updateActive((frame) => ({
       ...frame,
       cleaned: null,
@@ -119,7 +241,7 @@ export function StudioApp() {
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!drawingRef.current || !strokeIdRef.current || proposedCleanup) return
+    if (tool !== 'draw' || !drawingRef.current || !strokeIdRef.current || proposedCleanup) return
     const p = pointerPos(e)
     const id = strokeIdRef.current
     updateActive((frame) => ({
@@ -138,6 +260,8 @@ export function StudioApp() {
   function addFrameAfter() {
     setPlaying(false)
     setProposedCleanup(null)
+    setProposedPaint(null)
+    pushUndo()
     setFrames((prev) => {
       const next = [...prev]
       next.splice(activeIndex + 1, 0, newFrame())
@@ -150,9 +274,12 @@ export function StudioApp() {
   function duplicateFrame() {
     setPlaying(false)
     setProposedCleanup(null)
+    setProposedPaint(null)
+    pushUndo()
     const copy = newFrame({
       strokes: cloneStrokes(active.strokes),
       cleaned: active.cleaned ? cloneStrokes(active.cleaned) : null,
+      paints: active.paints.map(clonePaintProposal),
       isKey: false,
     })
     setFrames((prev) => {
@@ -161,7 +288,7 @@ export function StudioApp() {
       return next
     })
     setActiveIndex((i) => i + 1)
-    setStatus('Frame duplicated. Tweak the pose or mark it as a key.')
+    setStatus('Frame duplicated.')
   }
 
   function deleteFrame() {
@@ -171,32 +298,24 @@ export function StudioApp() {
     }
     setPlaying(false)
     setProposedCleanup(null)
+    setProposedPaint(null)
+    pushUndo()
     setFrames((prev) => prev.filter((_, i) => i !== activeIndex))
     setActiveIndex((i) => Math.max(0, Math.min(i, frames.length - 2)))
     setStatus('Frame deleted.')
   }
 
   function toggleKey() {
+    pushUndo()
     updateActive((f) => ({ ...f, isKey: !f.isKey }))
-    setStatus(active.isKey ? 'Key mark removed.' : 'Marked as key — use Insert inbetweens between two keys.')
-  }
-
-  function undoStroke() {
-    if (proposedCleanup) {
-      setProposedCleanup(null)
-      setStatus('Cleanup proposal dismissed.')
-      return
-    }
-    updateActive((f) => ({
-      ...f,
-      cleaned: null,
-      strokes: f.strokes.slice(0, -1),
-    }))
+    setStatus(active.isKey ? 'Key mark removed.' : 'Marked as key.')
   }
 
   function clearFrame() {
+    pushUndo()
     setProposedCleanup(null)
-    updateActive((f) => ({ ...f, strokes: [], cleaned: null }))
+    setProposedPaint(null)
+    updateActive((f) => ({ ...f, strokes: [], cleaned: null, paints: [] }))
     setStatus('Frame cleared.')
   }
 
@@ -206,12 +325,14 @@ export function StudioApp() {
       return
     }
     setPlaying(false)
+    setProposedPaint(null)
     setProposedCleanup(cleanupStrokes(active.strokes))
-    setStatus('Cleanup proposed as a layer. Accept or Reject — your rough stays until you decide.')
+    setStatus('Cleanup proposed. Accept or Reject.')
   }
 
   function acceptCleanup() {
     if (!proposedCleanup) return
+    pushUndo()
     updateActive((f) => ({ ...f, cleaned: proposedCleanup }))
     setProposedCleanup(null)
     setStatus('Cleanup accepted on this frame.')
@@ -219,7 +340,20 @@ export function StudioApp() {
 
   function rejectCleanup() {
     setProposedCleanup(null)
-    setStatus('Cleanup rejected. Rough unchanged.')
+    setStatus('Cleanup rejected.')
+  }
+
+  function acceptPaint() {
+    if (!proposedPaint) return
+    pushUndo()
+    updateActive((f) => ({ ...f, paints: [...f.paints, proposedPaint] }))
+    setProposedPaint(null)
+    setStatus('Paint layer accepted. Undo anytime, or paint another region.')
+  }
+
+  function rejectPaint() {
+    setProposedPaint(null)
+    setStatus('Paint rejected — line art unchanged.')
   }
 
   function insertInbetweens() {
@@ -227,13 +361,10 @@ export function StudioApp() {
       .map((f, i) => (f.isKey ? i : -1))
       .filter((i) => i >= 0)
     if (keyIndexes.length < 2) {
-      setStatus(
-        'Mark at least two keyframes (adjacent on the timeline), then Insert inbetweens.',
-      )
+      setStatus('Mark at least two keyframes, then Insert inbetweens.')
       return
     }
 
-    // Prefer the key pair that brackets the playhead; else the last complete pair.
     let a = -1
     let b = -1
     for (let i = 0; i < keyIndexes.length - 1; i++) {
@@ -246,13 +377,6 @@ export function StudioApp() {
     if (a < 0) {
       a = keyIndexes[keyIndexes.length - 2]
       b = keyIndexes[keyIndexes.length - 1]
-    }
-
-    if (b !== a + 1) {
-      setStatus(
-        `Keys ${a + 1} and ${b + 1} need to be adjacent. Delete frames between them, then insert.`,
-      )
-      return
     }
 
     const keyA = frames[a]
@@ -269,28 +393,70 @@ export function StudioApp() {
       newFrame({
         strokes: cloneStrokes(strokes),
         cleaned: null,
+        paints: [],
         isKey: false,
       }),
     )
 
     setPlaying(false)
     setProposedCleanup(null)
+    setProposedPaint(null)
+    pushUndo()
     setFrames((prev) => {
       const next = [...prev]
-      next.splice(a + 1, 0, ...newFrames)
+      // Replace any frames currently between the keys, then insert drafts.
+      const removeCount = Math.max(0, b - a - 1)
+      next.splice(a + 1, removeCount, ...newFrames)
       return next
     })
     setActiveIndex(a + 1)
     setStatus(
-      `Inserted ${newFrames.length} inbetween drafts between keys ${a + 1} and ${b + 1}. Scrub and edit — keys stay sacred.`,
+      `Inserted ${newFrames.length} inbetween drafts between keys ${a + 1} and ${b + 1}.`,
     )
+  }
+
+  function startVoicePrompt() {
+    const SR =
+      (window as unknown as { SpeechRecognition?: new () => SpeechRec }).SpeechRecognition ||
+      (window as unknown as { webkitSpeechRecognition?: new () => SpeechRec })
+        .webkitSpeechRecognition
+    if (!SR) {
+      setStatus('Voice input not supported in this browser — type the prompt instead.')
+      return
+    }
+    if (listening) {
+      recognitionRef.current?.stop()
+      setListening(false)
+      return
+    }
+    const rec = new SR()
+    recognitionRef.current = rec
+    rec.lang = 'en-US'
+    rec.continuous = false
+    rec.interimResults = false
+    rec.onresult = (ev) => {
+      const text = ev.results[0]?.[0]?.transcript?.trim()
+      if (text) {
+        setPrompt(text)
+        setStatus(`Heard: “${text}”. Click inside a closed region to propose paint.`)
+        setTool('paint')
+      }
+    }
+    rec.onerror = (ev) => {
+      setListening(false)
+      setStatus(`Voice error: ${ev.error}. You can type the prompt instead.`)
+    }
+    rec.onend = () => setListening(false)
+    setListening(true)
+    setStatus('Listening… say e.g. “paint this hair green with vivid highlights”.')
+    rec.start()
   }
 
   async function exportPngSequence() {
     setStatus('Exporting PNG sequence…')
     for (let i = 0; i < frames.length; i++) {
       const frame = frames[i]
-      const blob = await frameToPngBlob(frame.strokes, frame.cleaned)
+      const blob = await frameToPngBlob(frame.strokes, frame.cleaned, frame.paints)
       if (!blob) continue
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -307,6 +473,8 @@ export function StudioApp() {
     window.location.hash = '#/'
   }
 
+  const canvasLocked = Boolean(proposedCleanup || playing)
+
   return (
     <div className="studio">
       <header className="studio__top">
@@ -317,6 +485,15 @@ export function StudioApp() {
           <span className="studio__title">Studio</span>
         </div>
         <div className="studio__top-actions">
+          <button
+            type="button"
+            className="btn"
+            onClick={undo}
+            disabled={undoStack.length === 0 && !proposedPaint && !proposedCleanup}
+            title="Undo last change"
+          >
+            Undo
+          </button>
           <label className="studio__fps">
             FPS
             <input
@@ -332,6 +509,7 @@ export function StudioApp() {
             className={`btn ${playing ? 'btn--active' : 'btn--primary'}`}
             onClick={() => {
               setProposedCleanup(null)
+              setProposedPaint(null)
               setPlaying((p) => !p)
             }}
           >
@@ -345,9 +523,61 @@ export function StudioApp() {
 
       <div className="studio__body">
         <aside className="studio__rail" aria-label="Tools">
-          <p className="studio__rail-label">Draw</p>
-          <button type="button" className="btn studio__tool" onClick={undoStroke}>
-            Undo stroke
+          <p className="studio__rail-label">Tool</p>
+          <button
+            type="button"
+            className={`btn studio__tool${tool === 'draw' ? ' btn--active' : ''}`}
+            onClick={() => {
+              setTool('draw')
+              setProposedPaint(null)
+              setStatus('Draw mode — close shapes for paint fills (e.g. hair outline).')
+            }}
+          >
+            Draw
+          </button>
+          <button
+            type="button"
+            className={`btn studio__tool${tool === 'paint' ? ' btn--active' : ''}`}
+            onClick={() => {
+              setTool('paint')
+              setProposedCleanup(null)
+              setStatus('Paint mode — click inside a closed region to propose vivid cel paint.')
+            }}
+          >
+            Paint (prompt)
+          </button>
+
+          <p className="studio__rail-label">Voice / prompt</p>
+          <textarea
+            id={promptId}
+            className="studio__prompt"
+            rows={3}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder='e.g. "paint this hair green with vivid highlights"'
+          />
+          <button
+            type="button"
+            className={`btn studio__tool${listening ? ' btn--active' : ''}`}
+            onClick={startVoicePrompt}
+          >
+            {listening ? 'Stop listening' : 'Voice prompt'}
+          </button>
+
+          {proposedPaint ? (
+            <>
+              <button type="button" className="btn btn--primary studio__tool" onClick={acceptPaint}>
+                Accept paint
+              </button>
+              <button type="button" className="btn studio__tool" onClick={rejectPaint}>
+                Reject paint
+              </button>
+            </>
+          ) : null}
+
+          <p className="studio__rail-label">Edit</p>
+          <button type="button" className="btn studio__tool" onClick={undo}>
+            Undo
           </button>
           <button type="button" className="btn studio__tool" onClick={clearFrame}>
             Clear frame
@@ -357,7 +587,7 @@ export function StudioApp() {
           {!proposedCleanup ? (
             <button
               type="button"
-              className="btn btn--primary studio__tool"
+              className="btn studio__tool"
               onClick={proposeCleanup}
               disabled={active.strokes.length === 0}
             >
@@ -405,14 +635,16 @@ export function StudioApp() {
               checked={showCleaned}
               onChange={(e) => setShowCleaned(e.target.checked)}
             />
-            Show cleaned layer
+            Prefer cleaned lines
           </label>
         </aside>
 
         <main className="studio__stage">
           <canvas
             ref={canvasRef}
-            className={`studio__canvas${proposedCleanup || playing ? ' studio__canvas--locked' : ''}`}
+            className={`studio__canvas${canvasLocked ? ' studio__canvas--locked' : ''}${
+              tool === 'paint' ? ' studio__canvas--paint' : ''
+            }`}
             aria-label="Animation drawing board"
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
@@ -439,6 +671,7 @@ export function StudioApp() {
           <span className="studio__frame-meta">
             Frame {activeIndex + 1} / {frames.length}
             {active?.isKey ? ' · KEY' : ''}
+            {active?.paints.length ? ` · ${active.paints.length} paint` : ''}
           </span>
         </div>
         <div className="studio__strip" role="list">
@@ -457,6 +690,7 @@ export function StudioApp() {
               onClick={() => {
                 setPlaying(false)
                 setProposedCleanup(null)
+                setProposedPaint(null)
                 setActiveIndex(i)
               }}
             >
@@ -465,6 +699,7 @@ export function StudioApp() {
               <span className="studio__cell-dots" aria-hidden="true">
                 {frame.strokes.length > 0 ? '●' : '○'}
                 {frame.cleaned ? '+' : ''}
+                {frame.paints.length > 0 ? '■' : ''}
               </span>
             </button>
           ))}

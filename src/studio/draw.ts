@@ -1,4 +1,11 @@
+import type { PaintProposal } from '../lib/promptPaint'
 import type { Stroke } from '../lib/strokeCleanup'
+
+function toImageData(rgba: Uint8ClampedArray, width: number, height: number): ImageData {
+  const copy = new Uint8ClampedArray(rgba.length)
+  copy.set(rgba)
+  return new ImageData(copy, width, height)
+}
 
 export function drawStrokes(
   ctx: CanvasRenderingContext2D,
@@ -23,14 +30,32 @@ export function drawStrokes(
   ctx.restore()
 }
 
+function drawPaintLayer(
+  ctx: CanvasRenderingContext2D,
+  paint: PaintProposal,
+  boardW: number,
+  boardH: number,
+) {
+  if (paint.width !== boardW || paint.height !== boardH) return
+  const tmp = document.createElement('canvas')
+  tmp.width = boardW
+  tmp.height = boardH
+  const tctx = tmp.getContext('2d')
+  if (!tctx) return
+  tctx.putImageData(toImageData(paint.rgba, paint.width, paint.height), 0, 0)
+  ctx.drawImage(tmp, 0, 0)
+}
+
 export function paintStudioBoard(
   canvas: HTMLCanvasElement,
   opts: {
     strokes: Stroke[]
     cleaned: Stroke[] | null
+    paints: PaintProposal[]
     onionPrev: Stroke[] | null
     onionNext: Stroke[] | null
     proposedCleanup: Stroke[] | null
+    proposedPaint: PaintProposal | null
     ghostRough: boolean
     showCleaned: boolean
   },
@@ -50,7 +75,6 @@ export function paintStudioBoard(
   ctx.fillStyle = '#F2F4F6'
   ctx.fillRect(0, 0, w, h)
 
-  // Paper grain wash
   const wash = ctx.createLinearGradient(0, 0, w, h)
   wash.addColorStop(0, 'rgba(255,255,255,0.5)')
   wash.addColorStop(1, 'rgba(42,107,95,0.05)')
@@ -64,18 +88,28 @@ export function paintStudioBoard(
     drawStrokes(ctx, opts.onionNext, { color: '#2A6B5F', width: 1.6, alpha: 0.22 })
   }
 
-  if (opts.ghostRough || !opts.proposedCleanup) {
-    drawStrokes(ctx, opts.strokes, {
-      color: '#5A5348',
-      width: 2.6,
-      alpha: opts.proposedCleanup ? 0.3 : 0.95,
-    })
+  // Paint under line art
+  for (const paint of opts.paints) {
+    drawPaintLayer(ctx, paint, w, h)
+  }
+  if (opts.proposedPaint) {
+    drawPaintLayer(ctx, opts.proposedPaint, w, h)
   }
 
+  const lineArt =
+    opts.showCleaned && opts.cleaned && opts.cleaned.length > 0 ? opts.cleaned : opts.strokes
+
   if (opts.proposedCleanup) {
+    if (opts.ghostRough) {
+      drawStrokes(ctx, opts.strokes, { color: '#5A5348', width: 1.6, alpha: 0.28 })
+    }
     drawStrokes(ctx, opts.proposedCleanup, { color: '#1A3D38', width: 2.3, alpha: 1 })
-  } else if (opts.showCleaned && opts.cleaned) {
-    drawStrokes(ctx, opts.cleaned, { color: '#0E1012', width: 2.35, alpha: 1 })
+  } else {
+    drawStrokes(ctx, lineArt, {
+      color: '#0E1012',
+      width: opts.cleaned ? 2.35 : 2.6,
+      alpha: 0.95,
+    })
   }
 }
 
@@ -87,6 +121,7 @@ export function frameDisplayStrokes(strokes: Stroke[], cleaned: Stroke[] | null)
 export async function frameToPngBlob(
   strokes: Stroke[],
   cleaned: Stroke[] | null,
+  paints: PaintProposal[],
   width = 960,
   height = 540,
 ): Promise<Blob | null> {
@@ -97,6 +132,23 @@ export async function frameToPngBlob(
   if (!ctx) return null
   ctx.fillStyle = '#F2F4F6'
   ctx.fillRect(0, 0, width, height)
+
+  // Scale paints if needed — for export use board paints only when sizes match; otherwise skip
+  for (const paint of paints) {
+    if (paint.width === width && paint.height === height) {
+      ctx.putImageData(toImageData(paint.rgba, paint.width, paint.height), 0, 0)
+    } else {
+      const tmp = document.createElement('canvas')
+      tmp.width = paint.width
+      tmp.height = paint.height
+      const tctx = tmp.getContext('2d')
+      if (tctx) {
+        tctx.putImageData(toImageData(paint.rgba, paint.width, paint.height), 0, 0)
+        ctx.drawImage(tmp, 0, 0, width, height)
+      }
+    }
+  }
+
   const draw = cleaned && cleaned.length > 0 ? cleaned : strokes
   drawStrokes(ctx, draw, { color: '#0E1012', width: 2.4, alpha: 1 })
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'))

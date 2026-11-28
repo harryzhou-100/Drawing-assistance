@@ -64,8 +64,8 @@ export function Landing() {
             <p className="hero__brand">Draftline</p>
             <h1 id="hero-title">Speed the pipeline — don’t skip it.</h1>
             <p className="hero__lede">
-              A tablet-ready studio for traditional 2D: draw keys, propose cleanup and
-              inbetweens as editable layers — not instant finished shots.
+              Draw line art, then voice-prompt vivid cel paint inside closed regions —
+              highlights, shadows, undo anytime. Assist the craft; don’t skip it.
             </p>
             <div className="hero__cta">
               <a className="btn btn--primary btn--lg" href="#/studio">
