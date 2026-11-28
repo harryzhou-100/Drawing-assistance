@@ -9,7 +9,7 @@ Rather than prompt → finished shot, Draftline embeds assistive models into eac
 | Stage | Human owns | AI assists |
 | --- | --- | --- |
 | **1. Rough / scratch** | Acting, composition, timing | Volume ghosts, consistency checks |
-| **2. Layout / blocking** | Camera, staging | Perspective / contact snap to set |
+| **2. Layout / blocking** | Camera, staging | Ground-plane snap, scale, contact shadow drafts |
 | **3. Cleanup / douga** | Line style, keys, final silhouettes | Cleanup layers + key-to-key inbetween drafts |
 | **4. Color / finish** | Palette, mood, lighting | Flats, palette lock, draft shadows |
 
@@ -21,20 +21,20 @@ Rather than prompt → finished shot, Draftline embeds assistive models into eac
 4. Accept / reject / redraw  
 5. Export stage asset  
 
-## This repo (P0–P2 demos)
+## This repo (P0–P3 demos)
 
-1. **Cleanup** — draw a rough (or load a sample), propose cleanup, accept/reject  
-2. **Flats** — propose enclosed-region flats from a **locked palette**; reassign only within the lock; Frame 2 inherits on accept  
-3. **Inbetweens** — load Key A / Key B, propose draft volumes between them, scrub timing, ghost keys, accept/reject  
+1. **Cleanup → flats** — propose cleanup, then locked-palette flats with Frame 2 lock  
+2. **Inbetweens** — Key A / Key B, draft volumes, scrub timing, accept/reject  
+3. **Layout snap** — 1-pt set + floating rough → plant feet, scale, draft contact shadow  
 
-No cloud inference yet — local geometry / flood-fill / stroke interpolation stand in for model-backed assists so the interaction loop is real.
+No cloud inference yet — local geometry stand-ins teach the human-in-the-loop interaction.
 
 ## Roadmap
 
-- **P0** Cleanup assist with propose / ghost / accept  
-- **P1** Auto-flat + palette lock on cleaned frames  
-- **P2** Key-to-key inbetween drafts *(this demo)*  
-- **P3** Layout / 3D snap assist  
+- **P0** Cleanup assist  
+- **P1** Auto-flat + palette lock  
+- **P2** Key-to-key inbetween drafts  
+- **P3** Layout / 3D snap *(this demo)*  
 
 ## Try it
 
@@ -52,4 +52,4 @@ npm run build
 
 ## Status
 
-P0–P2 ship cleanup, flats/palette-lock, and key-to-key inbetween assist loops. Next interactive slice: layout / 3D snap.
+P0–P3 cover the stage-wise assist spine end-to-end as interaction demos. Next: deeper model-backed cleanup / flatting, or tighter 2D–3D layout integration.

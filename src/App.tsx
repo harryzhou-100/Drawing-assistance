@@ -1,5 +1,6 @@
 import { HeroSketch } from './components/HeroSketch'
 import { InbetweenDemo } from './components/InbetweenDemo'
+import { LayoutSnapDemo } from './components/LayoutSnapDemo'
 import { LineCleanupDemo } from './components/LineCleanupDemo'
 import './App.css'
 
@@ -14,14 +15,14 @@ const stages = [
   {
     name: 'Layout / blocking',
     detail:
-      'Camera and staging stay yours. AI can snap scale to a 3D set and flag contact errors without replacing layout.',
-    state: 'Planned',
-    owns: 'Artist + assist',
+      'Camera and staging stay yours. Propose a ground-plane snap: plant feet, correct scale vs depth, draft a contact shadow — then accept or reject.',
+    state: 'Live in this demo',
+    owns: 'Assist loop',
   },
   {
     name: 'Cleanup / douga',
     detail:
-      'AI proposes cleaned strokes as a separate layer. You compare against the rough ghost, then accept, reject, or redraw. Key-to-key inbetween drafts sit here too — keys stay sacred.',
+      'AI proposes cleaned strokes as a separate layer. Key-to-key inbetween drafts sit here too — keys stay sacred.',
     state: 'Live in this demo',
     owns: 'Assist loop',
   },
@@ -51,8 +52,8 @@ export default function App() {
         </a>
         <nav className="nav__links" aria-label="Primary">
           <a href="#pipeline">Pipeline</a>
-          <a href="#loop">Assist loop</a>
-          <a href="#demo">Cleanup / flats</a>
+          <a href="#layout">Layout</a>
+          <a href="#demo">Cleanup</a>
           <a href="#inbetween">Inbetweens</a>
         </nav>
       </header>
@@ -68,11 +69,11 @@ export default function App() {
               labor as editable layers. You still own every creative call.
             </p>
             <div className="hero__cta">
-              <a className="btn btn--primary btn--lg" href="#inbetween">
-                Try inbetween drafts
+              <a className="btn btn--primary btn--lg" href="#layout">
+                Try layout snap
               </a>
-              <a className="btn btn--lg" href="#demo">
-                Cleanup → flats
+              <a className="btn btn--lg" href="#pipeline">
+                See the stages
               </a>
             </div>
           </div>
@@ -132,6 +133,17 @@ export default function App() {
           </div>
         </section>
 
+        <section id="layout" className="section section--layout" aria-labelledby="layout-title">
+          <div className="section__inner">
+            <h2 id="layout-title">Demo C: layout / ground-plane snap</h2>
+            <p className="section__lede">
+              Load a 1-pt set with a floating rough. Propose a snap to plant feet, correct
+              scale, and draft a contact shadow — then Accept or Reject.
+            </p>
+            <LayoutSnapDemo />
+          </div>
+        </section>
+
         <section id="demo" className="section section--demo" aria-labelledby="demo-title">
           <div className="section__inner">
             <h2 id="demo-title">Demo A: cleanup → flats → palette lock</h2>
@@ -156,7 +168,7 @@ export default function App() {
 
         <section className="section section--next" aria-labelledby="next-title">
           <div className="section__inner">
-            <h2 id="next-title">Roadmap from here</h2>
+            <h2 id="next-title">Roadmap</h2>
             <ol className="roadmap">
               <li>
                 <strong>P0 — Cleanup assist</strong>
@@ -168,11 +180,11 @@ export default function App() {
               </li>
               <li>
                 <strong>P2 — Key-to-key inbetween drafts</strong>
-                <span>Human keys + timing; AI drafts volumes between (this demo)</span>
+                <span>Human keys + timing; AI drafts volumes between</span>
               </li>
               <li>
                 <strong>P3 — Layout / 3D snap</strong>
-                <span>Contact and perspective assist without replacing set design</span>
+                <span>Ground-plane plant + scale + contact shadow (this demo)</span>
               </li>
             </ol>
           </div>

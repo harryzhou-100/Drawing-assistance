@@ -176,8 +176,21 @@
 }
 
 .section--demo .section__inner,
-.section--inbetween .section__inner {
+.section--inbetween .section__inner,
+.section--layout .section__inner {
   max-width: 56rem;
+}
+
+.section--layout {
+  background:
+    radial-gradient(60% 45% at 15% 0%, rgba(42, 107, 95, 0.09), transparent 50%),
+    linear-gradient(180deg, #e4e9ee 0%, #e8ecf0 100%);
+  border-block: 1px solid var(--rule);
+}
+
+.section--layout .demo__canvas {
+  /* Slightly taller so perspective set + character read clearly */
+  height: min(62vh, 520px);
 }
 
 .section--inbetween {
