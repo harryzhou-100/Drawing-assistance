@@ -355,7 +355,12 @@ export function StudioApp() {
 
           <p className="studio__rail-label">Assist</p>
           {!proposedCleanup ? (
-            <button type="button" className="btn btn--primary studio__tool" onClick={proposeCleanup}>
+            <button
+              type="button"
+              className="btn btn--primary studio__tool"
+              onClick={proposeCleanup}
+              disabled={active.strokes.length === 0}
+            >
               Propose cleanup
             </button>
           ) : (
