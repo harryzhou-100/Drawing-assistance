@@ -531,14 +531,9 @@
 }
 
 .demo__stage {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
-}
-
-.demo__stage--split {
-  grid-template-columns: 1.4fr 1fr;
-  align-items: stretch;
 }
 
 .demo__lock-pane {
@@ -558,7 +553,7 @@
 }
 
 .demo__canvas--lock {
-  height: min(58vh, 480px);
+  height: min(36vh, 280px);
   cursor: default;
 }
 
@@ -597,16 +592,6 @@
   .roadmap li {
     grid-template-columns: 1fr;
     gap: 0.35rem;
-  }
-}
-
-@media (max-width: 720px) {
-  .demo__stage--split {
-    grid-template-columns: 1fr;
-  }
-
-  .demo__canvas--lock {
-    height: 36vh;
   }
 }
 

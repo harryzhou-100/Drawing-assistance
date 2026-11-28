@@ -21,8 +21,17 @@ export type FlatRegion = {
   pixelCount: number
   /** Compact mask: 1 = inside region, length = width * height. */
   mask: Uint8Array
+  /** Mask buffer dimensions — must match the board used when proposing. */
+  width: number
+  height: number
   cx: number
   cy: number
+}
+
+export type FlatProposal = {
+  width: number
+  height: number
+  regions: FlatRegion[]
 }
 
 const LINE = 0
@@ -126,11 +135,11 @@ export function proposeFlats(
   width: number,
   height: number,
   palette: PaletteSwatch[] = DEFAULT_PALETTE,
-  options?: { minPixels?: number; maxRegions?: number },
+  options?: { minPixels?: number; maxRegions?: number; lineWidth?: number },
 ): FlatRegion[] {
-  const minPixels = options?.minPixels ?? Math.max(80, Math.floor((width * height) / 400))
+  const minPixels = options?.minPixels ?? Math.max(60, Math.floor((width * height) / 500))
   const maxRegions = options?.maxRegions ?? palette.length
-  const gray = rasterizeLineArt(strokes, width, height)
+  const gray = rasterizeLineArt(strokes, width, height, options?.lineWidth ?? 4)
 
   // Mark background (anything reachable from the border).
   for (let x = 0; x < width; x++) {
@@ -158,17 +167,36 @@ export function proposeFlats(
   candidates.sort((a, b) => b.count - a.count)
   const picked = candidates.slice(0, maxRegions)
 
-  return picked.map((region, i) => {
+  // Prefer top→Hair/Skin… and reserve Accent for the smallest pocket.
+  const withMeta = picked.map((region) => ({
+    ...region,
+    cx: region.sumX / region.count,
+    cy: region.sumY / region.count,
+  }))
+  const smallest = [...withMeta].sort((a, b) => a.count - b.count)[0]
+  const upper = withMeta
+    .filter((r) => r !== smallest)
+    .sort((a, b) => a.cy - b.cy || b.count - a.count)
+  const ordered = smallest ? [...upper, smallest] : upper
+  // Map onto Hair, Skin, Cloth, Accent when using the default palette order.
+  const swatchOrder =
+    palette.length >= 4
+      ? [palette[1], palette[0], palette[2], palette[3], ...palette.slice(4)]
+      : palette
+
+  return ordered.map((region, i) => {
     const mask = new Uint8Array(width * height)
     for (const idx of region.cells) mask[idx] = 1
-    const swatch = palette[i % palette.length]
+    const swatch = swatchOrder[i % swatchOrder.length]
     return {
       id: `flat-${i}-${swatch.id}`,
       swatchId: swatch.id,
       pixelCount: region.count,
       mask,
-      cx: region.sumX / region.count,
-      cy: region.sumY / region.count,
+      width,
+      height,
+      cx: region.cx,
+      cy: region.cy,
     }
   })
 }

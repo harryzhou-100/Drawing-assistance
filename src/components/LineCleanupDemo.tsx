@@ -45,6 +45,11 @@ function drawFlats(
   height: number,
   selectedId: string | null,
 ) {
+  // Skip if masks were built for a different board size (avoids stripe corruption).
+  if (regions.some((r) => r.width !== width || r.height !== height || r.mask.length !== width * height)) {
+    return false
+  }
+
   const img = ctx.createImageData(width, height)
   const { data } = img
   for (const region of regions) {
@@ -78,6 +83,7 @@ function drawFlats(
       ctx.restore()
     }
   }
+  return true
 }
 
 function paintBoard(
@@ -122,8 +128,15 @@ function paintBoard(
     flatCanvas.height = h
     const fctx = flatCanvas.getContext('2d')
     if (fctx) {
-      drawFlats(fctx, flats, palette, w, h, phase === 'flat_review' ? selectedFlatId : null)
-      ctx.drawImage(flatCanvas, 0, 0)
+      const ok = drawFlats(
+        fctx,
+        flats,
+        palette,
+        w,
+        h,
+        phase === 'flat_review' ? selectedFlatId : null,
+      )
+      if (ok) ctx.drawImage(flatCanvas, 0, 0)
     }
   }
 
@@ -146,8 +159,7 @@ function paintBoard(
 
 function paintLockPreview(
   canvas: HTMLCanvasElement,
-  strokes: Stroke[],
-  flats: FlatRegion[],
+  sourceFlats: FlatRegion[],
   palette: PaletteSwatch[],
 ) {
   const ctx = canvas.getContext('2d')
@@ -162,17 +174,21 @@ function paintLockPreview(
   ctx.fillStyle = '#E8ECF0'
   ctx.fillRect(0, 0, w, h)
 
-  if (flats.length > 0) {
+  const strokes2 = scaleSampleFrame2(w, h)
+  const regions2 = proposeFlats(strokes2, w, h, palette)
+  const locked = lockPaletteOntoRegions(sourceFlats, regions2)
+
+  if (locked.length > 0) {
     const flatCanvas = document.createElement('canvas')
     flatCanvas.width = w
     flatCanvas.height = h
     const fctx = flatCanvas.getContext('2d')
     if (fctx) {
-      drawFlats(fctx, flats, palette, w, h, null)
-      ctx.drawImage(flatCanvas, 0, 0)
+      const ok = drawFlats(fctx, locked, palette, w, h, null)
+      if (ok) ctx.drawImage(flatCanvas, 0, 0)
     }
   }
-  drawStrokes(ctx, strokes, { color: '#0E1012', width: 1.8, alpha: 1 })
+  drawStrokes(ctx, strokes2, { color: '#0E1012', width: 1.8, alpha: 1 })
 }
 
 const LOOP_STEPS: { id: string; label: string }[] = [
@@ -197,9 +213,7 @@ export function LineCleanupDemo() {
   const [palette] = useState<PaletteSwatch[]>(DEFAULT_PALETTE)
   const [flats, setFlats] = useState<FlatRegion[] | null>(null)
   const [selectedFlatId, setSelectedFlatId] = useState<string | null>(null)
-  const [frame2, setFrame2] = useState<{ strokes: Stroke[]; flats: FlatRegion[] } | null>(
-    null,
-  )
+  const [showFrame2, setShowFrame2] = useState(false)
   const [status, setStatus] = useState(
     'Draw a rough, or load a sample cleaned frame to jump into flatting.',
   )
@@ -222,9 +236,9 @@ export function LineCleanupDemo() {
 
   useEffect(() => {
     const canvas = lockCanvasRef.current
-    if (!canvas || !frame2) return
-    paintLockPreview(canvas, frame2.strokes, frame2.flats, palette)
-  }, [frame2, palette])
+    if (!canvas || !showFrame2 || !flats) return
+    paintLockPreview(canvas, flats, palette)
+  }, [showFrame2, flats, palette])
 
   useEffect(() => {
     const onResize = () => {
@@ -241,13 +255,13 @@ export function LineCleanupDemo() {
         ghostRough,
         selectedFlatId,
       )
-      if (lockCanvasRef.current && frame2) {
-        paintLockPreview(lockCanvasRef.current, frame2.strokes, frame2.flats, palette)
+      if (lockCanvasRef.current && showFrame2 && flats) {
+        paintLockPreview(lockCanvasRef.current, flats, palette)
       }
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [rough, lineArt, flats, palette, phase, ghostRough, selectedFlatId, frame2])
+  }, [rough, lineArt, flats, palette, phase, ghostRough, selectedFlatId, showFrame2])
 
   function pointerPos(e: React.PointerEvent<HTMLCanvasElement>): Point {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -300,7 +314,7 @@ export function LineCleanupDemo() {
     const next = cleanupStrokes(rough)
     setLineArt(next)
     setFlats(null)
-    setFrame2(null)
+    setShowFrame2(false)
     setPhase('review')
     setStatus('Cleanup proposed as a separate layer. Ghost your rough, then Accept or Reject.')
   }
@@ -328,7 +342,7 @@ export function LineCleanupDemo() {
     setRough([])
     setLineArt(sample)
     setFlats(null)
-    setFrame2(null)
+    setShowFrame2(false)
     setSelectedFlatId(null)
     setPhase('accepted')
     setStatus(
@@ -350,7 +364,7 @@ export function LineCleanupDemo() {
     }
     setFlats(regions)
     setSelectedFlatId(regions[0]?.id ?? null)
-    setFrame2(null)
+    setShowFrame2(false)
     setPhase('flat_review')
     setStatus(
       `Proposed ${regions.length} flat region${regions.length === 1 ? '' : 's'} from the locked palette. Reassign with swatches, then Accept or Reject.`,
@@ -368,13 +382,7 @@ export function LineCleanupDemo() {
 
   function acceptFlats() {
     if (!flats || !lineArt) return
-    const canvas = canvasRef.current
-    const w = canvas?.clientWidth || boardSizeRef.current.w
-    const h = canvas?.clientHeight || boardSizeRef.current.h
-    const strokes2 = scaleSampleFrame2(w, h)
-    const regions2 = proposeFlats(strokes2, w, h, palette)
-    const locked = lockPaletteOntoRegions(flats, regions2)
-    setFrame2({ strokes: strokes2, flats: locked })
+    setShowFrame2(true)
     setPhase('flat_accepted')
     setSelectedFlatId(null)
     setStatus(
@@ -385,7 +393,7 @@ export function LineCleanupDemo() {
   function rejectFlats() {
     setFlats(null)
     setSelectedFlatId(null)
-    setFrame2(null)
+    setShowFrame2(false)
     setPhase('accepted')
     setStatus('Flat proposal rejected. Cleanup layer unchanged — propose flats again anytime.')
   }
@@ -403,7 +411,7 @@ export function LineCleanupDemo() {
   function backToDraw() {
     setLineArt(null)
     setFlats(null)
-    setFrame2(null)
+    setShowFrame2(false)
     setSelectedFlatId(null)
     setPhase('draw')
     setStatus('Back to rough. Draw more, then propose cleanup again.')
@@ -419,7 +427,7 @@ export function LineCleanupDemo() {
     setRough([])
     setLineArt(null)
     setFlats(null)
-    setFrame2(null)
+    setShowFrame2(false)
     setSelectedFlatId(null)
     setPhase('draw')
     setStatus('Board cleared. Draw a new rough or load a sample.')
@@ -576,7 +584,7 @@ export function LineCleanupDemo() {
         </div>
       )}
 
-      <div className={`demo__stage${frame2 ? ' demo__stage--split' : ''}`}>
+      <div className="demo__stage">
         <canvas
           ref={canvasRef}
           className={`demo__canvas${phase === 'draw' || phase === 'flat_review' ? '' : ' demo__canvas--locked'}`}
@@ -592,7 +600,7 @@ export function LineCleanupDemo() {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         />
-        {frame2 && (
+        {showFrame2 && flats && (
           <div className="demo__lock-pane">
             <p className="demo__lock-label">Frame 2 · palette lock</p>
             <canvas
