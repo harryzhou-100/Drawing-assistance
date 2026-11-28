@@ -1,4 +1,5 @@
 import { HeroSketch } from './components/HeroSketch'
+import { InbetweenDemo } from './components/InbetweenDemo'
 import { LineCleanupDemo } from './components/LineCleanupDemo'
 import './App.css'
 
@@ -20,7 +21,7 @@ const stages = [
   {
     name: 'Cleanup / douga',
     detail:
-      'AI proposes cleaned strokes as a separate layer. You compare against the rough ghost, then accept, reject, or redraw.',
+      'AI proposes cleaned strokes as a separate layer. You compare against the rough ghost, then accept, reject, or redraw. Key-to-key inbetween drafts sit here too — keys stay sacred.',
     state: 'Live in this demo',
     owns: 'Assist loop',
   },
@@ -51,7 +52,8 @@ export default function App() {
         <nav className="nav__links" aria-label="Primary">
           <a href="#pipeline">Pipeline</a>
           <a href="#loop">Assist loop</a>
-          <a href="#demo">Try assist</a>
+          <a href="#demo">Cleanup / flats</a>
+          <a href="#inbetween">Inbetweens</a>
         </nav>
       </header>
 
@@ -66,11 +68,11 @@ export default function App() {
               labor as editable layers. You still own every creative call.
             </p>
             <div className="hero__cta">
-              <a className="btn btn--primary btn--lg" href="#demo">
-                Try cleanup → flats
+              <a className="btn btn--primary btn--lg" href="#inbetween">
+                Try inbetween drafts
               </a>
-              <a className="btn btn--lg" href="#pipeline">
-                See the stages
+              <a className="btn btn--lg" href="#demo">
+                Cleanup → flats
               </a>
             </div>
           </div>
@@ -132,12 +134,23 @@ export default function App() {
 
         <section id="demo" className="section section--demo" aria-labelledby="demo-title">
           <div className="section__inner">
-            <h2 id="demo-title">Live demo: cleanup → flats → palette lock</h2>
+            <h2 id="demo-title">Demo A: cleanup → flats → palette lock</h2>
             <p className="section__lede">
               Propose cleanup, accept it, then propose flats from a locked palette. Reassign
               only within the lock; accept to push colors onto the next frame.
             </p>
             <LineCleanupDemo />
+          </div>
+        </section>
+
+        <section id="inbetween" className="section section--inbetween" aria-labelledby="inbetween-title">
+          <div className="section__inner">
+            <h2 id="inbetween-title">Demo B: key → inbetween drafts</h2>
+            <p className="section__lede">
+              Load Key A and Key B. Propose draft volumes between them, scrub the timing chart,
+              ghost the keys, then Accept or Reject. Keys stay sacred.
+            </p>
+            <InbetweenDemo />
           </div>
         </section>
 
@@ -151,11 +164,11 @@ export default function App() {
               </li>
               <li>
                 <strong>P1 — Auto-flat + palette lock</strong>
-                <span>Named regions + locked swatches across frames (this demo)</span>
+                <span>Named regions + locked swatches across frames</span>
               </li>
               <li>
                 <strong>P2 — Key-to-key inbetween drafts</strong>
-                <span>Human keys and timing stay sacred; AI drafts volumes between them</span>
+                <span>Human keys + timing; AI drafts volumes between (this demo)</span>
               </li>
               <li>
                 <strong>P3 — Layout / 3D snap</strong>
