@@ -2,54 +2,49 @@
 
 Stage-wise AI co-pilot for traditional 2D animation — **speed the pipeline, don’t skip it**.
 
-Rather than prompt → finished shot, Draftline embeds assistive models into each existing production stage so artists keep judgment and pixel-level authority.
+## Try the Studio (real tool)
 
-## Product spine
-
-| Stage | Human owns | AI assists |
-| --- | --- | --- |
-| **1. Rough / scratch** | Acting, composition, timing | Volume ghosts, consistency checks |
-| **2. Layout / blocking** | Camera, staging | Ground-plane snap, scale, contact shadow drafts |
-| **3. Cleanup / douga** | Line style, keys, final silhouettes | Cleanup layers + key-to-key inbetween drafts |
-| **4. Color / finish** | Palette, mood, lighting | Flats, palette lock, draft shadows |
-
-### Assist loop (every tool)
-
-1. Artist draws / picks keys  
-2. AI proposes next layer  
-3. Ghost + compare  
-4. Accept / reject / redraw  
-5. Export stage asset  
-
-## This repo (P0–P3 demos)
-
-1. **Cleanup → flats** — propose cleanup, then locked-palette flats with Frame 2 lock  
-2. **Inbetweens** — Key A / Key B, draft volumes, scrub timing, accept/reject  
-3. **Layout snap** — 1-pt set + floating rough → plant feet, scale, draft contact shadow  
-
-No cloud inference yet — local geometry stand-ins teach the human-in-the-loop interaction.
-
-## Roadmap
-
-- **P0** Cleanup assist  
-- **P1** Auto-flat + palette lock  
-- **P2** Key-to-key inbetween drafts  
-- **P3** Layout / 3D snap *(this demo)*  
-
-## Try it
-
-- **GitHub Pages** (after deploy on `main`): https://harryzhou-100.github.io/Drawing-assistance/
-- Locally:
+Open **`#/studio`** after starting the app — a tablet-ready timeline where you draw keys, propose cleanup, insert inbetweens, play, and export PNGs.
 
 ```bash
 npm install
 npm run dev
 ```
 
+Then go to `http://localhost:5173/#/studio` (or GitHub Pages `/Drawing-assistance/#/studio`).
+
+### Studio workflow
+
+1. Draw frame 1 with a pen / stylus / mouse  
+2. **Mark as key** → **+ Frame** → draw frame 2 → mark key  
+3. **Insert inbetweens** between the two keys  
+4. Optional: **Propose cleanup** on a frame → Accept / Reject  
+5. **Play** the loop · **Export PNGs**
+
+## Why not a CSP / Procreate Dreams plugin?
+
+Clip Studio Paint and Procreate Dreams do **not** expose open plugin APIs for embedding this kind of assist inside their canvases. Draftline is a **browser studio** that works with drawing tablets via Pointer Events. Longer-term bridges are more realistic toward hosts with open APIs (e.g. Krita, OpenToonz) plus file export — not closed CSP / Dreams extensions.
+
+## Product spine
+
+| Stage | Human owns | AI assists |
+| --- | --- | --- |
+| Rough / scratch | Acting, timing | Consistency checks |
+| Layout / blocking | Camera, staging | Ground-plane snap |
+| Cleanup / douga | Line style, keys | Cleanup + inbetween drafts |
+| Color / finish | Palette, mood | Flats + palette lock |
+
+### Assist loop
+
+Artist draws → AI proposes layer → ghost / compare → accept / reject → export
+
+## Demos on the landing page
+
+Interactive stand-alone slices for cleanup/flats, inbetweens, and layout snap. The **Studio** is where you make a short animation yourself.
+
+## Build
+
 ```bash
 npm run build
+npm run preview
 ```
-
-## Status
-
-P0–P3 cover the stage-wise assist spine end-to-end as interaction demos. Next: deeper model-backed cleanup / flatting, or tighter 2D–3D layout integration.
