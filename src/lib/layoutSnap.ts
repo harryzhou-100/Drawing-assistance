@@ -58,7 +58,7 @@ export function proposeLayoutSnap(
   options?: { depth?: number; targetHeightRatio?: number },
 ): SnapProposal {
   const depth = options?.depth ?? 0.55
-  const targetHeightRatio = options?.targetHeightRatio ?? 0.42
+  const targetHeightRatio = options?.targetHeightRatio ?? 0.62
   const targetFoot: Point = {
     x: character.foot.x,
     y: groundYAtX(set, character.foot.x, depth),
@@ -67,7 +67,7 @@ export function proposeLayoutSnap(
   const boardHeight = set.floorY - set.horizonY || 1
   const desiredHeight = boardHeight * targetHeightRatio
   const scale =
-    character.height > 1 ? Math.max(0.55, Math.min(1.35, desiredHeight / character.height)) : 1
+    character.height > 1 ? Math.max(0.7, Math.min(1.25, desiredHeight / character.height)) : 1
 
   const strokes = character.strokes.map((s) => ({
     ...s,

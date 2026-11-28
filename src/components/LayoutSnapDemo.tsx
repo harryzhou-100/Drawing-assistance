@@ -114,7 +114,8 @@ function paintBoard(
     ctx.save()
     ctx.font = '600 12px "IBM Plex Sans", sans-serif'
     ctx.fillStyle = '#C45C3A'
-    ctx.fillText('Floating rough (needs snap)', character.foot.x - 40, character.foot.y - 12)
+    const labelY = Math.max(18, character.foot.y - character.height - 8)
+    ctx.fillText('Floating rough (needs snap)', character.foot.x - 70, labelY)
     ctx.restore()
   }
 
