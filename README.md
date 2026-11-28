@@ -21,21 +21,20 @@ Rather than prompt → finished shot, Draftline embeds assistive models into eac
 4. Accept / reject / redraw  
 5. Export stage asset  
 
-## This repo (P0 demo)
+## This repo (P0 + P1 demo)
 
-Interactive site + **client-side cleanup assist**:
+Interactive site with a chained assist board:
 
-- Draw a rough on the canvas  
-- **Propose cleanup** as a separate layer (local smoothing + path simplification stand-in)  
-- Ghost-compare, then **Accept** or **Reject**  
-- Rough never disappears until you accept  
+1. **Cleanup** — draw a rough (or load a sample), propose cleanup, accept/reject  
+2. **Flats** — propose enclosed-region flats from a **locked palette**; click a region + swatch to reassign within the lock  
+3. **Palette lock** — accepting flats propagates the same swatch mapping onto a Frame 2 preview  
 
-No cloud inference yet — the demo teaches the human-in-the-loop interaction.
+No cloud inference yet — local geometry + flood-fill stand in for model-backed assists so the interaction loop is real.
 
 ## Roadmap
 
-- **P0** Cleanup assist with propose / ghost / accept *(this demo)*  
-- **P1** Auto-flat + palette lock on cleaned frames  
+- **P0** Cleanup assist with propose / ghost / accept  
+- **P1** Auto-flat + palette lock on cleaned frames *(this demo)*  
 - **P2** Key-to-key inbetween drafts  
 - **P3** Layout / 3D snap assist  
 
@@ -55,4 +54,4 @@ npm run build
 
 ## Status
 
-P0 ships the stage-wise product framing and the cleanup assist loop. Next interactive slice: flatting / palette lock on an accepted cleanup layer.
+P0 + P1 ship the stage-wise framing, cleanup assist loop, and flat / palette-lock assist. Next interactive slice: key-to-key inbetween drafts.
